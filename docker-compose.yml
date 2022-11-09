@@ -1,0 +1,71 @@
+version: '3'
+services:
+  mysql:
+    image: mysql:8.0.25
+    container_name: example-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql_mode="" --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: '1'
+      MYSQL_DATABASE: example
+      MYSQL_USER: 'example'
+      MYSQL_PASSWORD: '1'
+      LANG: C.UTF-8
+    volumes:
+      - ./.docker/mysql:/var/lib/mysql
+    ports:
+      - 3307:3306
+
+  redis:
+    image: 'redis:6-alpine'
+    container_name: example-redis
+    ports:
+      - 6381:6379
+
+  # app:
+  #   build: .
+  #   container_name: example-backend
+  #   user: node
+  #   ports:
+  #     - 3000:3000
+  #   volumes:
+  #     - .:/home/node/app
+  #   depends_on:
+  #     - redis
+  #     - mysql
+  #   links:
+  #     - redis
+
+  zookeeper:
+    image: 'bitnami/zookeeper:3.6.2'
+    container_name: example-zookeeper
+    ports:
+      - 2183:2181
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: 'bitnami/kafka:2.6.0'
+    container_name: example-kafka
+    ports:
+      - 9093:9092
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_LISTENERS=PLAINTEXT://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9093
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  kafdrop:
+    platform: linux/x86_64
+    image: obsidiandynamics/kafdrop
+    container_name: example-kafdrop
+    restart: 'no'
+    ports:
+      - '9002:9000'
+    environment:
+      KAFKA_BROKERCONNECT: 'kafka:9092'
+      JVM_OPTS: '-Xms160M -Xmx480M -Xss1800K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify'
+    depends_on:
+      - 'kafka'
